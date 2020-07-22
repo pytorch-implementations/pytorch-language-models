@@ -27,7 +27,7 @@ class Tokenizer:
             tokens = [token.lower() for token in tokens]
 
         if self.max_length is not None:
-            length = max_length
+            length = self.max_length
             if self.sos_token is not None:
                 length -= 1
             if self.eos_token is not None:
@@ -45,9 +45,14 @@ class Tokenizer:
     def __call__(self, example):
         return self.tokenize(example)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
+    example = "HELLO world HOW are YOU TODAY?"
+    example_tokens = ['<sos>', 'hello', 'world', 'how', '<eos>']
+
     tokenize_fn = lambda x : x.split()
-    tokenizer = Tokenizer(tokenize_fn)
-    example = 'hello world how are you today?'
+    tokenizer = Tokenizer(tokenize_fn, lower=True, sos_token='<sos>', eos_token='<eos>', max_length=5)
+
     tokens = tokenizer(example)
-    print(tokens)
+    assert tokens == example_tokens, print(tokens, example_tokens)
+
