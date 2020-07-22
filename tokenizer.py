@@ -55,4 +55,3 @@ if __name__ == "__main__":
 
     tokens = tokenizer(example)
     assert tokens == example_tokens, print(tokens, example_tokens)
-
