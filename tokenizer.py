@@ -48,10 +48,8 @@ class Tokenizer:
 
 if __name__ == "__main__":
     example = "HELLO world HOW are YOU TODAY?"
-    example_tokens = ['<sos>', 'hello', 'world', 'how', '<eos>']
-
+    expected_tokens = ['<sos>', 'hello', 'world', 'how', '<eos>']
     tokenize_fn = lambda x : x.split()
     tokenizer = Tokenizer(tokenize_fn, lower=True, sos_token='<sos>', eos_token='<eos>', max_length=5)
-
     tokens = tokenizer(example)
-    assert tokens == example_tokens, print(tokens, example_tokens)
+    assert tokens == expected_tokens
