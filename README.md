@@ -35,7 +35,7 @@ model = models.load_model(vocab, config)
 trainer = Trainer(model)
 
 # run training
-while trainer.run:
+while trainer.run():
 
     # train model on training data
     trainer.train(train_iterator)
