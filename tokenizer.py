@@ -45,30 +45,56 @@ class Tokenizer:
     def __call__(self, example):
         return self.tokenize(example)
 
+
 def get_tokenizer(tokenizer):
 
     if tokenizer == "nltk":
         import nltk
         nltk.download("punkt")
-        return nltk.tokenize.word_tokenize
+        tokenizer = nltk.tokenize.word_tokenize
+        return tokenizer
 
-    if tokenizer == "spacy":
+    if tokenizer == "punkt":
+        import nltk
+        tokenizer = nltk.tokenize.wordpunct_tokenize
+        return tokenizer
+
+    if tokenizer == "tweet":
+        import nltk
+        tokenizer = nltk.tokenize.casual.TweetTokenizer()
+        return tokenizer.tokenize
+
+    elif tokenizer == "ptb":
+        import nltk
+        tokenizer = nltk.tokenize.treebank.TreebankWordTokenizer()
+        return tokenizer.tokenize
+
+    elif tokenizer == "spacy":
         import spacy
         from functools import partial
-        spacy = spacy.load("en_core_web_sm")
+        spacy = spacy.load("en_core_web_sm", disable=["ner", "parser", "tagger"])
         def _spacy_tokenize(example, spacy):
             return [token.text for token in spacy.tokenizer(example)]
         return partial(_spacy_tokenize, spacy=spacy)
 
+    else:
+        raise ValueError
+
 if __name__ == "__main__":
-    example = "HELLO world HOW are YOU TODAY?"
+    example = "HELLO world HOW are YOU TODAY? i am feeling very good. hope you're happy to hear! because i am."
     expected_tokens = ["<sos>", "hello", "world", "how", "<eos>"]
     tokenize_fn = lambda x : x.split()
     tokenizer = Tokenizer(tokenize_fn, lower=True, sos_token="<sos>", eos_token="<eos>", max_length=5)
     tokens = tokenizer(example)
     assert tokens == expected_tokens
 
-    tokenizer = Tokenizer('nltk')
-    tokens = tokenizer(example)
-    tokenizer = Tokenizer('spacy')
-    tokens = tokenizer(example)
+    import time
+    for tokenizer_fn in ["nltk", "punkt", "tweet", "ptb", "spacy"]:
+        print(tokenizer_fn)
+        tokenizer = Tokenizer(tokenizer_fn)
+        t0 = time.monotonic()
+        for _ in range(100_000):
+            tokens = tokenizer(example)
+        dt = time.monotonic() - t0
+        print("\t", tokens)
+        print("\t", dt)
