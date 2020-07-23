@@ -1,13 +1,13 @@
 class Tokenizer:
     def __init__(self, tokenize_fn, lower=False, sos_token=None, eos_token=None, max_length=None):
 
-        assert callable(tokenize_fn)
+        assert callable(tokenize_fn) or isinstance(tokenize_fn, str)
         assert isinstance(lower, bool)
         assert isinstance(sos_token, str) or sos_token is None
         assert isinstance(eos_token, str) or eos_token is None
         assert (isinstance(max_length, int) and max_length > 0) or max_length is None
 
-        self.tokenize_fn = tokenize_fn
+        self.tokenize_fn = tokenize_fn if callable(tokenize_fn) else get_tokenizer(tokenize_fn)
         self.lower = lower
         self.sos_token = sos_token
         self.eos_token = eos_token
@@ -45,11 +45,30 @@ class Tokenizer:
     def __call__(self, example):
         return self.tokenize(example)
 
+def get_tokenizer(tokenizer):
+
+    if tokenizer == "nltk":
+        import nltk
+        nltk.download("punkt")
+        return nltk.tokenize.word_tokenize
+
+    if tokenizer == "spacy":
+        import spacy
+        from functools import partial
+        spacy = spacy.load("en_core_web_sm")
+        def _spacy_tokenize(example, spacy):
+            return [token.text for token in spacy.tokenizer(example)]
+        return partial(_spacy_tokenize, spacy=spacy)
 
 if __name__ == "__main__":
     example = "HELLO world HOW are YOU TODAY?"
-    expected_tokens = ['<sos>', 'hello', 'world', 'how', '<eos>']
+    expected_tokens = ["<sos>", "hello", "world", "how", "<eos>"]
     tokenize_fn = lambda x : x.split()
-    tokenizer = Tokenizer(tokenize_fn, lower=True, sos_token='<sos>', eos_token='<eos>', max_length=5)
+    tokenizer = Tokenizer(tokenize_fn, lower=True, sos_token="<sos>", eos_token="<eos>", max_length=5)
     tokens = tokenizer(example)
     assert tokens == expected_tokens
+
+    tokenizer = Tokenizer('nltk')
+    tokens = tokenizer(example)
+    tokenizer = Tokenizer('spacy')
+    tokens = tokenizer(example)

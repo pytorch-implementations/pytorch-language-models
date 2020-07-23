@@ -2,7 +2,7 @@ import collections
 
 
 class Vocab:
-    def __init__(self, counter, min_freq=1, max_size=None, unk_token='<unk>', pad_token='<pad>', specials=None):
+    def __init__(self, counter, min_freq=1, max_size=None, unk_token="<unk>", pad_token="<pad>", specials=None):
 
         assert isinstance(counter, collections.Counter)
         assert isinstance(min_freq, int) and min_freq > 0
@@ -88,14 +88,14 @@ def build_vocab_from_iterator(examples, **kwargs):
     return vocab
 
 if __name__ == "__main__":
-    examples = [['hello', 'world', 'hello'], ['hello', 'magic', 'world']]
-    expected_vocab_itos = ['<unk>', '<pad>', 'hello', 'world', 'magic']
-    expected_vocab_stoi = {'<unk>': 0, '<pad>': 1, 'hello': 2, 'world': 3, 'magic': 4}
+    examples = [["hello", "world", "hello"], ["hello", "magic", "world"]]
+    expected_vocab_itos = ["<unk>", "<pad>", "hello", "world", "magic"]
+    expected_vocab_stoi = {"<unk>": 0, "<pad>": 1, "hello": 2, "world": 3, "magic": 4}
     vocab = build_vocab_from_iterator(examples)
     assert len(vocab._itos) == 5
     assert expected_vocab_itos == vocab._itos
     assert expected_vocab_stoi == vocab._stoi
-    assert vocab.stoi('zebra') == vocab.stoi(vocab.unk_token)
+    assert vocab.stoi("zebra") == vocab.stoi(vocab.unk_token)
     assert vocab.itos(1) == vocab.itos(vocab.stoi(vocab.pad_token))
-    assert vocab['magic'] == vocab.stoi('magic') == 4
-    assert vocab[3] == vocab.itos(3) == 'world'
+    assert vocab["magic"] == vocab.stoi("magic") == 4
+    assert vocab[3] == vocab.itos(3) == "world"
