@@ -48,18 +48,23 @@ class Tokenizer:
 
 def get_tokenizer(tokenizer):
 
+    if tokenizer == "split":
+        def _split_tokenize(example):
+            return example.split()
+        return _split_tokenize
+
     if tokenizer == "nltk":
         import nltk
         nltk.download("punkt")
         tokenizer = nltk.tokenize.word_tokenize
         return tokenizer
 
-    if tokenizer == "punkt":
+    elif tokenizer == "punkt":
         import nltk
         tokenizer = nltk.tokenize.wordpunct_tokenize
         return tokenizer
 
-    if tokenizer == "tweet":
+    elif tokenizer == "tweet":
         import nltk
         tokenizer = nltk.tokenize.casual.TweetTokenizer()
         return tokenizer.tokenize
@@ -89,7 +94,7 @@ if __name__ == "__main__":
     assert tokens == expected_tokens
 
     import time
-    for tokenizer_fn in ["nltk", "punkt", "tweet", "ptb", "spacy"]:
+    for tokenizer_fn in ["split", "nltk", "punkt", "tweet", "ptb", "spacy"]:
         print(tokenizer_fn)
         tokenizer = Tokenizer(tokenizer_fn)
         t0 = time.monotonic()
