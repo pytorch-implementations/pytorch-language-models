@@ -2,25 +2,25 @@ import collections
 
 
 class Vocab:
-    def __init__(self, counter, min_freq=1, max_size=None, unk_token="<unk>", pad_token="<pad>", specials=None):
+    def __init__(self, counter, min_freq=1, max_size=None, unk_token="<unk>", pad_token="<pad>", special_tokens=None):
 
         assert isinstance(counter, collections.Counter)
         assert isinstance(min_freq, int) and min_freq > 0
         assert (isinstance(max_size, int) and max_size > 0) or max_size is None
         assert isinstance(unk_token, str) or unk_token is None
         assert isinstance(pad_token, str) or pad_token is None
-        assert (isinstance(specials, list) and all([isinstance(token, str) for token in specials])) or specials is None
+        assert (isinstance(special_tokens, list) and all([isinstance(token, str) for token in special_tokens])) or special_tokens is None
 
         self.counter = counter
         self.min_freq = min_freq
         self.max_size = max_size
         self.unk_token = unk_token
         self.pad_token = pad_token
-        self.specials = specials
+        self.specials = special_tokens
 
-        self._stoi, self._itos = self.create_vocab(counter, min_freq, max_size, unk_token, pad_token, specials)
+        self._stoi, self._itos = self._create_vocab(counter, min_freq, max_size, unk_token, pad_token, special_tokens)
 
-    def create_vocab(self, counter, min_freq, max_size, unk_token, pad_token, specials):
+    def _create_vocab(self, counter, min_freq, max_size, unk_token, pad_token, special_tokens):
 
         stoi = dict()
 
@@ -28,8 +28,8 @@ class Vocab:
             stoi[unk_token] = len(stoi)
         if pad_token is not None:
             stoi[pad_token] = len(stoi)
-        if specials is not None:
-            for special in specials:
+        if special_tokens is not None:
+            for special in special_tokens:
                 stoi[special] = len(stoi)
 
         for token, count in counter.most_common(max_size):
@@ -72,6 +72,7 @@ class Vocab:
         else:
             raise ValueError
 
+
 def build_vocab_from_iterator(examples, **kwargs):
 
     assert isinstance(examples, list)
@@ -89,13 +90,28 @@ def build_vocab_from_iterator(examples, **kwargs):
 
 if __name__ == "__main__":
     examples = [["hello", "world", "hello"], ["hello", "magic", "world"]]
+
+    vocab = build_vocab_from_iterator(examples)
     expected_vocab_itos = ["<unk>", "<pad>", "hello", "world", "magic"]
     expected_vocab_stoi = {"<unk>": 0, "<pad>": 1, "hello": 2, "world": 3, "magic": 4}
-    vocab = build_vocab_from_iterator(examples)
+
     assert len(vocab._itos) == 5
     assert expected_vocab_itos == vocab._itos
     assert expected_vocab_stoi == vocab._stoi
     assert vocab.stoi("zebra") == vocab.stoi(vocab.unk_token)
     assert vocab.itos(1) == vocab.itos(vocab.stoi(vocab.pad_token))
     assert vocab["magic"] == vocab.stoi("magic") == 4
+    assert vocab[3] == vocab.itos(3) == "world"
+
+    vocab = build_vocab_from_iterator(examples, min_freq=2)
+    expected_vocab_itos = ["<unk>", "<pad>", "hello", "world"]
+    expected_vocab_stoi = {"<unk>": 0, "<pad>": 1, "hello": 2, "world": 3}
+
+    assert len(vocab._itos) == 4
+    assert expected_vocab_itos == vocab._itos
+    assert expected_vocab_stoi == vocab._stoi
+    assert vocab.stoi("zebra") == vocab.stoi(vocab.unk_token)
+    assert vocab.stoi("magic") == vocab.stoi(vocab.unk_token)
+    assert vocab.itos(1) == vocab.itos(vocab.stoi(vocab.pad_token))
+    assert vocab["hello"] == vocab.stoi("hello") == 2
     assert vocab[3] == vocab.itos(3) == "world"
