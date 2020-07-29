@@ -1,5 +1,15 @@
+from typing import Callable, List
+
+
 class Tokenizer:
-    def __init__(self, tokenize_fn, lower=False, sos_token=None, eos_token=None, max_length=None):
+    '''
+    Class that handles all of the tokenization (string to list of strings)
+    Actual tokenization is done by the `tokenize_fn`, can either be a string
+    which uses one of the provided tokenizers from `get_tokenizer` or a callable
+    function if the user wants to specify their own.
+    '''
+
+    def __init__(self, tokenize_fn, lower: bool = False, sos_token: str = None, eos_token: str = None, max_length: int = None):
 
         assert callable(tokenize_fn) or isinstance(tokenize_fn, str)
         assert isinstance(lower, bool)
@@ -13,7 +23,7 @@ class Tokenizer:
         self.eos_token = eos_token
         self.max_length = max_length
 
-    def tokenize(self, example):
+    def tokenize(self, example: str) -> List[str]:
 
         assert isinstance(example, str)
 
@@ -42,11 +52,15 @@ class Tokenizer:
 
         return tokens
 
-    def __call__(self, example):
+    def __call__(self, example: str) -> List[str]:
         return self.tokenize(example)
 
 
-def get_tokenizer(tokenizer):
+def get_tokenizer(tokenizer: str) -> Callable:
+    '''
+    Gets one of the provided tokenization functions, a function which takes
+    in a string and returns a list of strings
+    '''
 
     if tokenizer == "split":
         def _split_tokenize(example):
@@ -78,12 +92,14 @@ def get_tokenizer(tokenizer):
         import spacy
         from functools import partial
         spacy = spacy.load("en_core_web_sm", disable=["ner", "parser", "tagger"])
+
         def _spacy_tokenize(example, spacy):
             return [token.text for token in spacy.tokenizer(example)]
+
         return partial(_spacy_tokenize, spacy=spacy)
 
     else:
-        raise ValueError
+        raise ValueError(f'{tokenizer} is not a recognized tokenizer.')
 
 if __name__ == "__main__":
     example = "HELLO world HOW are YOU TODAY? i am feeling very good. hope you're happy to hear! because i am."
