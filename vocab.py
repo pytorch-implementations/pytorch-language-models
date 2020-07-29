@@ -1,15 +1,22 @@
+from typing import Counter, Dict, List, Tuple
 import collections
 
 
 class Vocab:
-    def __init__(self, counter, min_freq=1, max_size=None, unk_token="<unk>", pad_token="<pad>", special_tokens=None):
+    '''
+    Class to handle a vocabulary, a mapping between strings and a their corresponding integer values.
+    Vocabulary must be created with a counter where each key is a token and each value is the number
+    of times that tokens appears in the training dataset.
+    '''
 
-        assert isinstance(counter, collections.Counter)
-        assert isinstance(min_freq, int) and min_freq > 0
-        assert (isinstance(max_size, int) and max_size > 0) or max_size is None
-        assert isinstance(unk_token, str) or unk_token is None
-        assert isinstance(pad_token, str) or pad_token is None
-        assert (isinstance(special_tokens, list) and all([isinstance(token, str) for token in special_tokens])) or special_tokens is None
+    def __init__(self, counter: Counter, min_freq: int = 1, max_size: int = None, unk_token: str = "<unk>", pad_token: str = "<pad>", special_tokens: List[str] = None):
+
+        assert isinstance(counter, collections.Counter), f"counter should be a collections.Counter, got {type(counter)}"
+        assert isinstance(min_freq, int) and min_freq > 0, f"min_freq should an integer greater than 0, got {min_freq} ({type(min_freq)})"
+        assert (isinstance(max_size, int) and max_size > 0) or max_size is None, f"max_size should be an integer greater than 0 or None, got {max_size} ({type(max_size)})"
+        assert isinstance(unk_token, str) or unk_token is None, f"unk_token should be a string or None, got {unk_token} ({type(unk_token)})"
+        assert isinstance(pad_token, str) or pad_token is None, f"pad_token should be a string or None, got {pad_token} ({type(unk_token)})"
+        assert (isinstance(special_tokens, list) and all([isinstance(token, str) for token in special_tokens])) or special_tokens is None, f"special_tokens should be a list of strings, got {special_tokens}"
 
         self.counter = counter
         self.min_freq = min_freq
@@ -20,7 +27,15 @@ class Vocab:
 
         self._stoi, self._itos = self._create_vocab(counter, min_freq, max_size, unk_token, pad_token, special_tokens)
 
-    def _create_vocab(self, counter, min_freq, max_size, unk_token, pad_token, special_tokens):
+    def _create_vocab(self, counter: Counter, min_freq: int, max_size: int, unk_token: str, pad_token: str, special_tokens: List[str]) -> Tuple[Dict, List]:
+        '''
+        Does the actual vocabulary creation
+        - tokens that appear less than min_freq times are ignored
+        - once the vocabulary reaches max size, no more tokens are added
+        - unk_token is the token used to replace tokens not in the vocabulary
+        - pad_token is used to pad sequences
+        - special tokens are other tokens we want appended to the start of our vocabulary
+        '''
 
         stoi = dict()
 
@@ -40,15 +55,20 @@ class Vocab:
 
         itos = [token for token, index in stoi.items()]
 
-        assert len(stoi) > 0
-        assert max_size is None or len(stoi) <= max_size
-        assert len(stoi) == len(itos)
+        assert len(stoi) > 0, "Created vocabulary is empty!"
+        assert max_size is None or len(stoi) <= max_size, "Created vocabulary is larger than max size"
+        assert len(stoi) == len(itos), "Created str -> int vocab is not the same size as the int -> str vocab"
 
         return stoi, itos
 
-    def stoi(self, token):
+    def stoi(self, token: str) -> int:
+        '''
+        Converts a token (str) into its corresponding integer value from the vocabulary
+        If the token is not in the vocabulary, returns the integer value of the unk_token
+        If unk_token is set to None, throws an error
+        '''
 
-        assert isinstance(token, str)
+        assert isinstance(token, str), f"Input to vocab.stoi should be str, got {type(token)}"
 
         if token in self._stoi:
             return self._stoi[token]
@@ -56,37 +76,47 @@ class Vocab:
             assert self.unk_token is not None
             return self._stoi[self.unk_token]
 
-    def itos(self, index):
+    def itos(self, index: int) -> str:
+        '''
+        Converts an integer into its corresponding token (str) from the vocabulary
+        If the integer value is outside of the vocabulary range, throws an error
+        '''
 
-        assert isinstance(index, int)
-        assert index >= 0
-        assert index < len(self._itos)
+        assert isinstance(index, int), f"Input to vocab.itos should be an integer, got {type(index)}"
+        assert index >= 0, f"Input to vocab.itos should be a positive integer (or zero), got {index}"
+        assert index < len(self._itos), f"Input index out of range, should be <{len(self._itos)}, got {index}"
 
         return self._itos[index]
 
     def __getitem__(self, x):
+        '''
+        Convenience function so we can call vocab[x] and if x is a string then
+        vocab.stoi(x) is called, and if x is an integer then vocab.itos(x) is called
+        '''
+
         if isinstance(x, str):
             return self.stoi(x)
         elif isinstance(x, int):
             return self.itos(x)
         else:
-            raise ValueError
+            raise ValueError(f'When calling vocab[x], x should be either an int or str, got {type(x)}')
 
 
 def build_vocab_from_iterator(examples, **kwargs):
 
-    assert isinstance(examples, list)
-    assert all([isinstance(example, list) for example in examples])
+    assert isinstance(examples, list), f"examples should be a list, got {type(examples)}"
+    assert all([isinstance(example, list) for example in examples]), f"examples should be a list of lists, got {[type(example) for example in examples]}"
 
     counter = collections.Counter()
 
     for example in examples:
-        assert all([isinstance(token, str) for token in example])
+        assert all([isinstance(token, str) for token in example]), f"each example in examples should be a list of strings, got {[type(token) for token in example]}"
         counter.update(example)
 
     vocab = Vocab(counter, **kwargs)
 
     return vocab
+
 
 if __name__ == "__main__":
     examples = [["hello", "world", "hello"], ["hello", "magic", "world"]]
