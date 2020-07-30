@@ -1,5 +1,5 @@
 from typing import Callable, List
-
+import torch
 
 class Tokenizer:
     '''
@@ -61,8 +61,20 @@ class Tokenizer:
 
         return tokens
 
+    def save(self, save_path):
+        assert isinstance(save_path, str), f"save_path should be a str, got {type(save_path)}"
+        torch.save(self, save_path)
+
     def __call__(self, example: str) -> List[str]:
         return self.tokenize(example)
+
+
+def _split_tokenize(example):
+    return example.split()
+
+
+def _spacy_tokenize(example, spacy):
+    return [token.text for token in spacy.tokenizer(example)]
 
 
 def get_tokenizer(tokenizer: str) -> Callable:
@@ -74,11 +86,9 @@ def get_tokenizer(tokenizer: str) -> Callable:
     assert isinstance(tokenizer, str), f"input to get_tokenizer should be a str, got {type(tokenizer)}"
 
     if tokenizer == "split":
-        def _split_tokenize(example):
-            return example.split()
         return _split_tokenize
 
-    if tokenizer == "nltk":
+    elif tokenizer == "nltk":
         import nltk
         nltk.download("punkt")
         tokenizer = nltk.tokenize.word_tokenize
@@ -103,24 +113,30 @@ def get_tokenizer(tokenizer: str) -> Callable:
         import spacy
         from functools import partial
         spacy = spacy.load("en_core_web_sm", disable=["ner", "parser", "tagger"])
-        def _spacy_tokenize(example, spacy):
-            return [token.text for token in spacy.tokenizer(example)]
-
         return partial(_spacy_tokenize, spacy=spacy)
 
     else:
         raise ValueError(f'{tokenizer} is not a recognized tokenizer.')
 
+
 if __name__ == "__main__":
     example = "HELLO world HOW are YOU TODAY? i am feeling very good. hope you're happy to hear! because i am."
     expected_tokens = ["<sos>", "hello", "world", "how", "<eos>"]
-    tokenize_fn = lambda x : x.split()
-    tokenizer = Tokenizer(tokenize_fn, lower=True, sos_token="<sos>", eos_token="<eos>", max_length=5)
+    tokenizer = Tokenizer('split', lower=True, sos_token="<sos>", eos_token="<eos>", max_length=5)
+    tokens = tokenizer(example)
+    assert tokens == expected_tokens
+    tokenizer.save('test_tokenizer.pt')
+    tokenizer = torch.load('test_tokenizer.pt')
+    tokens = tokenizer(example)
+    assert tokens == expected_tokens
+    import os
+    tokenizer.save(os.path.join('test_tokenizer.pt'))
+    tokenizer = torch.load('test_tokenizer.pt')
     tokens = tokenizer(example)
     assert tokens == expected_tokens
 
     import time
-    for tokenizer_fn in ["split", "nltk", "punkt", "tweet", "ptb", "spacy"]:
+    for tokenizer_fn in ["split", "spacy", "punkt", "tweet", "ptb", "nltk"]:
         print(tokenizer_fn)
         tokenizer = Tokenizer(tokenizer_fn)
         t0 = time.monotonic()
@@ -129,3 +145,8 @@ if __name__ == "__main__":
         dt = time.monotonic() - t0
         print("\t", tokens)
         print("\t", dt)
+        tokenizer.save('test_tokenizer.pt')
+        torch.load('test_tokenizer.pt')
+        assert tokens == tokenizer(example)
+    os.remove('test_tokenizer.pt')
+
