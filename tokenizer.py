@@ -149,4 +149,3 @@ if __name__ == "__main__":
         torch.load('test_tokenizer.pt')
         assert tokens == tokenizer(example)
     os.remove('test_tokenizer.pt')
-
