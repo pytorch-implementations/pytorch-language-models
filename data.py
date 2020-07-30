@@ -37,7 +37,7 @@ class LanguageModelingDataset:
         self.valid_data = self._load_dataset(valid_data_path)
         self.test_data = self._load_dataset(test_data_path)
         self.tokenizer = tokenizer
-        self.vocab = self._create_vocab(**vocab_kwargs)
+        self.vocab = self._create_vocab(self.train_data, **vocab_kwargs)
 
     def _load_dataset(self, data_path: str) -> list:
         '''
@@ -53,19 +53,14 @@ class LanguageModelingDataset:
 
         return data
 
-    def _create_vocab(self, **vocab_kwargs):
+    def _create_vocab(self, data, **vocab_kwargs):
         '''
         Create vocabulary from training data. Uses our vocab script.
         A list of tokenized examples is passed to our script's method.
         Tokenization also uses our script.
         '''
 
-        tokenized_data = []
-        for line in self.train_data:
-            tokens = self.tokenizer(line)
-            tokenized_data.append(tokens)
-
-        self.vocab = vocab.build_vocab_from_iterator(tokenized_data, **vocab_kwargs)
+        self.vocab = vocab.build_vocab_from_iterator([self.tokenizer(line) for line in data], **vocab_kwargs)
 
         return self.vocab
 
