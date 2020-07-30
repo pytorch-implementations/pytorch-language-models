@@ -7,15 +7,24 @@ class Tokenizer:
     Actual tokenization is done by the `tokenize_fn`, can either be a string
     which uses one of the provided tokenizers from `get_tokenizer` or a callable
     function if the user wants to specify their own.
+
+    lower if true lowercase each token AFTER tokenization
+    sos_token is a token appended to the start of each sequence
+    eos_token is a token appended to the end of each sequence
+    max_length is the maximum length of a sequence
+      any sequences longer than max_length are trimmed (from the end)
+      if sos/eos tokens are not None, then they count towards the maximum length
+      however the sequences are trimmed accordingly before they are added and
+      the sos/eos tokens will always be included in the sequence
     '''
 
     def __init__(self, tokenize_fn, lower: bool = False, sos_token: str = None, eos_token: str = None, max_length: int = None):
 
-        assert callable(tokenize_fn) or isinstance(tokenize_fn, str)
-        assert isinstance(lower, bool)
-        assert isinstance(sos_token, str) or sos_token is None
-        assert isinstance(eos_token, str) or eos_token is None
-        assert (isinstance(max_length, int) and max_length > 0) or max_length is None
+        assert callable(tokenize_fn) or isinstance(tokenize_fn, str), f"tokenize_fn should be callable or str, got {type(tokenize_fn)}"
+        assert isinstance(lower, bool), f"lower should be bool, got {type(lower)}"
+        assert isinstance(sos_token, str) or sos_token is None, f"sos_token should be str or None, got {type(sos_token)}"
+        assert isinstance(eos_token, str) or eos_token is None, f"sos_token should be str or None, got {type(sos_token)}"
+        assert (isinstance(max_length, int) and max_length > 0) or max_length is None, f"max_length should be a positive integer or None, got {max_length} ({type(max_length)})"
 
         self.tokenize_fn = tokenize_fn if callable(tokenize_fn) else get_tokenizer(tokenize_fn)
         self.lower = lower
@@ -25,13 +34,13 @@ class Tokenizer:
 
     def tokenize(self, example: str) -> List[str]:
 
-        assert isinstance(example, str)
+        assert isinstance(example, str), f"example should be a str, got {type(example)}"
 
         tokens = self.tokenize_fn(example)
 
-        assert isinstance(tokens, list)
-        assert len(tokens) > 0
-        assert all([isinstance(token, str) for token in tokens])
+        assert isinstance(tokens, list), f"output of tokenize_fn should be a list, got {type(tokens)}"
+        assert len(tokens) > 0, f"got empty list of tokens from tokenizing input: {example}"
+        assert all([isinstance(token, str) for token in tokens]), f"output of tokenize_fn should be a list of strings, got {[type(token) for token in tokens]}"
 
         if self.lower:
             tokens = [token.lower() for token in tokens]
@@ -61,6 +70,8 @@ def get_tokenizer(tokenizer: str) -> Callable:
     Gets one of the provided tokenization functions, a function which takes
     in a string and returns a list of strings
     '''
+
+    assert isinstance(tokenizer, str), f"input to get_tokenizer should be a str, got {type(tokenizer)}"
 
     if tokenizer == "split":
         def _split_tokenize(example):
@@ -92,7 +103,6 @@ def get_tokenizer(tokenizer: str) -> Callable:
         import spacy
         from functools import partial
         spacy = spacy.load("en_core_web_sm", disable=["ner", "parser", "tagger"])
-
         def _spacy_tokenize(example, spacy):
             return [token.text for token in spacy.tokenizer(example)]
 
