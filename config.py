@@ -12,7 +12,7 @@ def load_model_config(config_path):
 
     config = load_config(config_path)
 
-    # TODO: add checks here once we finalize runner config format
+    # TODO: add checks here once we finalize model config format
 
     return config
 
