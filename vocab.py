@@ -1,5 +1,6 @@
 from typing import Counter, Dict, List, Tuple
 import collections
+import torch
 
 
 class Vocab:
@@ -88,6 +89,10 @@ class Vocab:
 
         return self._itos[index]
 
+    def save(self, save_path):
+        assert isinstance(save_path, str), f"save_path should be a str, got {type(save_path)}"
+        torch.save(self, save_path)
+
     def __getitem__(self, x):
         '''
         Convenience function so we can call vocab[x] and if x is a string then
@@ -133,6 +138,17 @@ if __name__ == "__main__":
     assert vocab["magic"] == vocab.stoi("magic") == 4
     assert vocab[3] == vocab.itos(3) == "world"
 
+    vocab.save('test_vocab.pt')
+    vocab = torch.load('test_vocab.pt')
+
+    assert len(vocab._itos) == 5
+    assert expected_vocab_itos == vocab._itos
+    assert expected_vocab_stoi == vocab._stoi
+    assert vocab.stoi("zebra") == vocab.stoi(vocab.unk_token)
+    assert vocab.itos(1) == vocab.itos(vocab.stoi(vocab.pad_token))
+    assert vocab["magic"] == vocab.stoi("magic") == 4
+    assert vocab[3] == vocab.itos(3) == "world"
+
     vocab = build_vocab_from_iterator(examples, min_freq=2)
     expected_vocab_itos = ["<unk>", "<pad>", "hello", "world"]
     expected_vocab_stoi = {"<unk>": 0, "<pad>": 1, "hello": 2, "world": 3}
@@ -145,3 +161,18 @@ if __name__ == "__main__":
     assert vocab.itos(1) == vocab.itos(vocab.stoi(vocab.pad_token))
     assert vocab["hello"] == vocab.stoi("hello") == 2
     assert vocab[3] == vocab.itos(3) == "world"
+
+    vocab.save('test_vocab.pt')
+    vocab = torch.load('test_vocab.pt')
+
+    assert len(vocab._itos) == 4
+    assert expected_vocab_itos == vocab._itos
+    assert expected_vocab_stoi == vocab._stoi
+    assert vocab.stoi("zebra") == vocab.stoi(vocab.unk_token)
+    assert vocab.stoi("magic") == vocab.stoi(vocab.unk_token)
+    assert vocab.itos(1) == vocab.itos(vocab.stoi(vocab.pad_token))
+    assert vocab["hello"] == vocab.stoi("hello") == 2
+    assert vocab[3] == vocab.itos(3) == "world"
+
+    import os
+    os.remove('test_vocab.pt')

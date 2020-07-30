@@ -3,7 +3,7 @@
 TODO:
 
 - [x] tokenizer save
-- [] vocab save
+- [x] vocab save
 - [] data load datasets
 - [] data load iterators
 - [] load model config
