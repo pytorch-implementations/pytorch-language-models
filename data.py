@@ -26,24 +26,20 @@ class LanguageModelingDataset:
     Takes in dataset paths and returns data iterators for each dataset.
     Currently works for PTB dataset. Will have to check for other datasets.
     """
-    def __init__(self, train_data_path, valid_data_path, test_data_path, tokenizer, batch_size, sequence_length, **kwargs):
+    def __init__(self, train_data_path, valid_data_path, test_data_path, tokenizer, **vocab_kwargs):
 
         assert isinstance(train_data_path, str)
         assert isinstance(valid_data_path, str)
         assert isinstance(test_data_path, str)
         assert isinstance(tokenizer, Tokenizer)
-        assert isinstance(batch_size, int)
-        assert isinstance(sequence_length, int)
 
-        self.train_data = self.load_dataset(train_data_path)
-        self.valid_data = self.load_dataset(valid_data_path)
-        self.test_data = self.load_dataset(test_data_path)
+        self.train_data = self._load_dataset(train_data_path)
+        self.valid_data = self._load_dataset(valid_data_path)
+        self.test_data = self._load_dataset(test_data_path)
         self.tokenizer = tokenizer
-        self.batch_size = batch_size
-        self.sequence_length = sequence_length
-        self.vocab = self.create_vocab(**kwargs)
+        self.vocab = self._create_vocab(**vocab_kwargs)
 
-    def load_dataset(self, data_path: str) -> list:
+    def _load_dataset(self, data_path: str) -> list:
         '''
         Reads dataset from path. Appends each line in a list.
         Returns a list of strings.
@@ -57,7 +53,7 @@ class LanguageModelingDataset:
 
         return data
 
-    def create_vocab(self, **kwargs):
+    def _create_vocab(self, **vocab_kwargs):
         '''
         Create vocabulary from training data. Uses our vocab script.
         A list of tokenized examples is passed to our script's method.
@@ -69,11 +65,11 @@ class LanguageModelingDataset:
             tokens = self.tokenizer(line)
             tokenized_data.append(tokens)
 
-        self.vocab = vocab.build_vocab_from_iterator(tokenized_data, **kwargs)
+        self.vocab = vocab.build_vocab_from_iterator(tokenized_data, **vocab_kwargs)
 
         return self.vocab
 
-    def get_tokens(self, data):
+    def _get_tokens(self, data):
         '''
         Returns the whole dataset as a list of tokens.
         '''
@@ -85,13 +81,13 @@ class LanguageModelingDataset:
 
         return tokens
 
-    def to_ids(self, data):
+    def _to_ids(self, data, batch_size):
         '''
         Converts tokens/words to ids. Returns a tensor of the format
         [batch_size, *].
         '''
 
-        tokens = self.get_tokens(data)
+        tokens = self._get_tokens(data)
         token_count = 0
         ids = torch.LongTensor(len(tokens))
         for token in tokens:
@@ -100,30 +96,33 @@ class LanguageModelingDataset:
 
         assert token_count == len(tokens)
 
-        num_batches = ids.size(0) // self.batch_size
-        ids = ids[:num_batches * self.batch_size]
-        return ids.view(self.batch_size, -1)
+        n_batches = ids.size(0) // batch_size
+        ids = ids[:n_batches * batch_size]
+        return ids.view(batch_size, -1)
 
-    def get_iterator(self, data):
+    def _get_iterator(self, data, batch_size, sequence_length):
         '''
         Returns a list iterator object by getting the data in LM format.
         Targets are calculated by shifting the input sequence by 1 time-step.
         '''
 
-        ids = self.to_ids(data)
+        ids = self._to_ids(data, batch_size)
         iterator = []
-        for i in range(0, ids.size(1) - self.sequence_length, self.sequence_length):
-            inputs = ids[:, i:i+self.sequence_length]
-            targets = ids[:, (i+1):(i+1)+self.sequence_length]
+        for i in range(0, ids.size(1) - sequence_length, sequence_length):
+            inputs = ids[:, i:i+sequence_length]
+            targets = ids[:, (i+1):(i+1)+sequence_length]
             iterator.append((inputs, targets))
 
         return iter(iterator)
 
-    def load_iterators(self):
+    def load_iterators(self, batch_size, sequence_length):
 
-        train_iterator = self.get_iterator(self.train_data)
-        valid_iterator = self.get_iterator(self.valid_data)
-        test_iterator = self.get_iterator(self.test_data)
+        assert isinstance(batch_size, int)
+        assert isinstance(sequence_length, int)
+
+        train_iterator = self._get_iterator(self.train_data, batch_size, sequence_length)
+        valid_iterator = self._get_iterator(self.valid_data, batch_size, sequence_length)
+        test_iterator = self._get_iterator(self.test_data, batch_size, sequence_length)
 
         return train_iterator, valid_iterator, test_iterator
 
@@ -131,21 +130,29 @@ class LanguageModelingDataset:
 if __name__ == "__main__":
 
     tokenizer = tokenizer.Tokenizer('split', lower=True, eos_token='<eos>')
-    data = LanguageModelingDataset('ptb-train.txt',
-                                   'ptb-valid.txt',
-                                   'ptb-valid.txt',
-                                   tokenizer,
-                                   20,
-                                   30)
+    dataset = LanguageModelingDataset('ptb.train.txt',
+                                      'ptb.valid.txt',
+                                      'ptb.valid.txt',
+                                      tokenizer)
 
-    train_iterator, valid_iterator, test_iterator = data.load_iterators()
-    x = next(iter(train_iterator))
-    assert(type(x)) == tuple
-    assert(len(x)) == 2
+    batch_size = 10
+    sequence_length = 20
+
+    train_iterator, valid_iterator, test_iterator = dataset.load_iterators(batch_size, sequence_length)
+    batch = next(iter(train_iterator))
+    assert(type(batch)) == tuple
+    assert(len(batch)) == 2
+    input, target = batch
     # x[0] = input, x[1] = target
-    assert x[0].shape == torch.Size([20, 30])
-    assert x[1].shape == torch.Size([20, 30])
+    assert input.shape == torch.Size([batch_size, sequence_length])
+    assert target.shape == torch.Size([batch_size, sequence_length])
+
+    assert torch.all(torch.eq(input[:, 1:], target[:, :-1]))
 
     # example
-    print("Sample Input: \n", x[0][0])
-    print("Sample Output: \n", x[1][0])
+    print("Sample Input:")
+    print("\t", input[0])
+    print("\t", [dataset.vocab[x.item()] for x in input[0]])
+    print("Sample Output:")
+    print("\t", target[0])
+    print("\t", [dataset.vocab[x.item()] for x in target[0]])
