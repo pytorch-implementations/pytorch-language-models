@@ -1,6 +1,7 @@
 from typing import Callable, List
 import torch
 
+
 class Tokenizer:
     '''
     Class that handles all of the tokenization (string to list of strings)
@@ -33,6 +34,9 @@ class Tokenizer:
         self.max_length = max_length
 
     def tokenize(self, example: str) -> List[str]:
+        '''
+        Runs the tokenization on an example that is a raw string
+        '''
 
         assert isinstance(example, str), f"example should be a str, got {type(example)}"
 
