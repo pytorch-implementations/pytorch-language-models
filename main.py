@@ -28,45 +28,40 @@ parser.add_argument("--model_config_path", type=str, default="configs/default_mo
 parser.add_argument("--runner_config_path", type=str, default="configs/default_runner.json")
 args = parser.parse_args()
 
-# load tokenizer
+# get tokenizer
 tokenizer = tokenizer.Tokenizer(args.tokenize_fn,
                                 args.lower,
                                 args.sos_token,
                                 args.eos_token,
                                 args.max_length)
 
-# load data
-train_data, valid_data, test_data = data.load_datasets(args.train_data_path,
-                                                       args.valid_data_path,
-                                                       args.test_data_path)
+# load data and create vocabulary
+datasets = data.load_datasets(args.train_data_path,
+                              args.valid_data_path,
+                              args.test_data_path,
+                              tokenizer,
+                              args.batch_size,
+                              args.sequence_length,
+                              min_freq=args.min_freq,
+                              max_size=args.max_size,
+                              unk_token=args.unk_token,
+                              pad_token=args.pad_token,
+                              special_tokens=args.special_tokens)
 
-# create vocabulary
-vocab = vocab.load_from_iterator(train_data,
-                                 args.min_freq,
-                                 args.max_size,
-                                 args.unk_token,
-                                 args.pad_token,
-                                 args.special_tokens)
-
-# create data iterators
-train_iterator, valid_iterator, test_iterator = data.load_iterators(train_data,
-                                                                    valid_data,
-                                                                    test_data,
-                                                                    vocab,
-                                                                    args.batch_size,
-                                                                    args.sequence_length)
+# get data iterators
+train_iterator, valid_iterator, test_iterator = datasets.load_iterators()
 
 # load model config
 model_config = config.load_model_config(args.model_config_path)
 
-# load model
-model = models.load_model(vocab,
+# get model
+model = models.load_model(datasets,
                           model_config)
 
 # load runner config
 runner_config = config.load_runner_config(args.runner_config_path)
 
-# load runner
+# get runner
 runner = runner.Runner(model,
                        runner_config)
 
@@ -82,7 +77,7 @@ while runner.run():
 runner.eval(test_iterator)
 
 # save tokenizer, vocab, model and runner
-tokenizer.save(runner_config['run_path'])
-vocab.save(runner_config['run_path'])
+datasets.tokenizer.save(runner_config['run_path'])
+datasets.vocab.save(runner_config['run_path'])
 model.save(runner_config['run_path'])
 runner.save(runner_config['run_path'])
