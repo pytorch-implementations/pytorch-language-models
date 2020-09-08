@@ -3,7 +3,7 @@ import torch
 
 
 class Tokenizer:
-    '''
+    """
     Class that handles all of the tokenization (string to list of strings)
     Actual tokenization is done by the `tokenize_fn`, can either be a string
     which uses one of the provided tokenizers from `get_tokenizer` or a callable
@@ -17,7 +17,7 @@ class Tokenizer:
       if sos/eos tokens are not None, then they count towards the maximum length
       however the sequences are trimmed accordingly before they are added and
       the sos/eos tokens will always be included in the sequence
-    '''
+    """
 
     def __init__(self, tokenize_fn, lower: bool = False, sos_token: str = None, eos_token: str = None, max_length: int = None):
 
@@ -34,9 +34,9 @@ class Tokenizer:
         self.max_length = max_length
 
     def tokenize(self, example: str) -> List[str]:
-        '''
+        """
         Runs the tokenization on an example that is a raw string
-        '''
+        """
 
         assert isinstance(example, str), f"example should be a str, got {type(example)}"
 
@@ -66,10 +66,16 @@ class Tokenizer:
         return tokens
 
     def save(self, save_path):
+        """
+        Saves the vocabulary class to the given save_path
+        """
         assert isinstance(save_path, str), f"save_path should be a str, got {type(save_path)}"
         torch.save(self, save_path)
 
     def __call__(self, example: str) -> List[str]:
+        """
+        For convenience, Tokenizer(s) is the same as Tokenizer.tokenize(s)
+        """
         return self.tokenize(example)
 
 
@@ -82,10 +88,10 @@ def _spacy_tokenize(example, spacy):
 
 
 def get_tokenizer(tokenizer: str) -> Callable:
-    '''
+    """
     Gets one of the provided tokenization functions, a function which takes
     in a string and returns a list of strings
-    '''
+    """
 
     assert isinstance(tokenizer, str), f"input to get_tokenizer should be a str, got {type(tokenizer)}"
 
@@ -120,7 +126,7 @@ def get_tokenizer(tokenizer: str) -> Callable:
         return partial(_spacy_tokenize, spacy=spacy)
 
     else:
-        raise ValueError(f'{tokenizer} is not a recognized tokenizer.')
+        raise ValueError(f"{tokenizer} is not a recognized tokenizer.")
 
 
 if __name__ == "__main__":
