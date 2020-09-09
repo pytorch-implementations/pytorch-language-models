@@ -4,11 +4,11 @@ import torch
 
 
 class Vocab:
-    '''
+    """
     Class to handle a vocabulary, a mapping between strings and a their corresponding integer values.
     Vocabulary must be created with a counter where each key is a token and each value is the number
     of times that tokens appears in the training dataset.
-    '''
+    """
 
     def __init__(self, counter: Counter, min_freq: int = 1, max_size: int = None, unk_token: str = "<unk>", pad_token: str = "<pad>", special_tokens: List[str] = None):
 
@@ -29,14 +29,14 @@ class Vocab:
         self._stoi, self._itos = self._create_vocab(counter, min_freq, max_size, unk_token, pad_token, special_tokens)
 
     def _create_vocab(self, counter: Counter, min_freq: int, max_size: int, unk_token: str, pad_token: str, special_tokens: List[str]) -> Tuple[Dict, List]:
-        '''
+        """
         Does the actual vocabulary creation
         - tokens that appear less than min_freq times are ignored
         - once the vocabulary reaches max size, no more tokens are added
         - unk_token is the token used to replace tokens not in the vocabulary
         - pad_token is used to pad sequences
         - special tokens are other tokens we want appended to the start of our vocabulary
-        '''
+        """
 
         stoi = dict()
 
@@ -58,16 +58,16 @@ class Vocab:
 
         assert len(stoi) > 0, "Created vocabulary is empty!"
         assert max_size is None or len(stoi) <= max_size, "Created vocabulary is larger than max size"
-        assert len(stoi) == len(itos), "Created str -> int vocab is not the same size as the int -> str vocab"
+        assert len(stoi) == len(itos), "Created str -> int vocab length is not the same size as the int -> str vocab length"
 
         return stoi, itos
 
     def stoi(self, token: str) -> int:
-        '''
+        """
         Converts a token (str) into its corresponding integer value from the vocabulary
         If the token is not in the vocabulary, returns the integer value of the unk_token
         If unk_token is set to None, throws an error
-        '''
+        """
 
         assert isinstance(token, str), f"Input to vocab.stoi should be str, got {type(token)}"
 
@@ -78,10 +78,10 @@ class Vocab:
             return self._stoi[self.unk_token]
 
     def itos(self, index: int) -> str:
-        '''
+        """
         Converts an integer into its corresponding token (str) from the vocabulary
         If the integer value is outside of the vocabulary range, throws an error
-        '''
+        """
 
         assert isinstance(index, int), f"Input to vocab.itos should be an integer, got {type(index)}"
         assert index >= 0, f"Input to vocab.itos should be a positive integer (or zero), got {index}"
@@ -90,14 +90,19 @@ class Vocab:
         return self._itos[index]
 
     def save(self, save_path):
+        """
+        Saves the vocabulary object to the given save_path
+        """
+        
         assert isinstance(save_path, str), f"save_path should be a str, got {type(save_path)}"
+        
         torch.save(self, save_path)
 
     def __getitem__(self, x):
-        '''
+        """
         Convenience function so we can call vocab[x] and if x is a string then
         vocab.stoi(x) is called, and if x is an integer then vocab.itos(x) is called
-        '''
+        """
 
         if isinstance(x, str):
             return self.stoi(x)
@@ -107,16 +112,18 @@ class Vocab:
             raise ValueError(f'When calling vocab[x], x should be either an int or str, got {type(x)}')
 
 
-def build_vocab_from_iterator(examples, **kwargs):
+def build_vocab_from_iterator(iterator, **kwargs):
 
-    assert isinstance(examples, list), f"examples should be a list, got {type(examples)}"
-    assert all([isinstance(example, list) for example in examples]), f"examples should be a list of lists, got {[type(example) for example in examples]}"
+    assert isinstance(iterator, list), f"iterator should be a list, got {type(examples)}"
+    assert all([isinstance(i, (list, str)) for i in iterator]), "iterator should be a list of lists or strings"
 
     counter = collections.Counter()
 
-    for example in examples:
-        assert all([isinstance(token, str) for token in example]), f"each example in examples should be a list of strings, got {[type(token) for token in example]}"
-        counter.update(example)
+    for i in iterator:
+        if isinstance(i, list):
+            counter.update(i)
+        else:
+            counter[i] += 1
 
     vocab = Vocab(counter, **kwargs)
 
