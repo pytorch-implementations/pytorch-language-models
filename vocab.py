@@ -40,10 +40,10 @@ class Vocab:
 
         stoi = dict()
 
-        if unk_token is not None:
-            stoi[unk_token] = len(stoi)
         if pad_token is not None:
             stoi[pad_token] = len(stoi)
+        if unk_token is not None:
+            stoi[unk_token] = len(stoi)
         if special_tokens is not None:
             for special in special_tokens:
                 stoi[special] = len(stoi)

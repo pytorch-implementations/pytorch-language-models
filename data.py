@@ -128,7 +128,7 @@ if __name__ == "__main__":
     dataset = LanguageModelingDataset('ptb.train.txt',
                                       'ptb.valid.txt',
                                       'ptb.valid.txt',
-                                      tokenizer)
+                                       tokenizer)
 
     batch_size = 10
     sequence_length = 20
