@@ -110,6 +110,9 @@ class Vocab:
             return self.itos(x)
         else:
             raise ValueError(f'When calling vocab[x], x should be either an int or str, got {type(x)}')
+    
+    def __len__(self):
+        return len(self._stoi)
 
 
 def build_vocab_from_iterator(iterator, **kwargs):

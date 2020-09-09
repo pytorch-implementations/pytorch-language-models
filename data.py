@@ -1,9 +1,10 @@
-import tokenizer
-import vocab
-import torch
 from typing import List, Tuple, Iterator
-from tokenizer import Tokenizer
-
+import numpy as np
+import pandas as pd
+import torch
+from collections import Counter
+from tokenizer import get_tokenizer, Tokenizer
+from vocab import Vocab, build_vocab_from_iterator
 
 class LanguageModelingDataset:
     """
@@ -28,7 +29,7 @@ class LanguageModelingDataset:
         """
         Reads dataset from path. Tokenizes each line and extends a list.
         """
-
+        print("Loading data...")
         assert isinstance(data_path, str), f"data_path should be a str, got {type(data_path)}"
 
         data = []
@@ -39,7 +40,7 @@ class LanguageModelingDataset:
 
         return data
 
-    def _create_vocab(self, data: List[str], **vocab_kwargs) -> vocab.Vocab:
+    def _create_vocab(self, data: List[str], **vocab_kwargs) -> Vocab:
         """
         Create vocabulary from data using the Vocab class with given arguments.
         Expects the data to already be tokenized, usually from _load_dataset.
@@ -98,6 +99,165 @@ class LanguageModelingDataset:
         ids = ids.view(batch_size, -1)
 
         return ids
+
+class DataIterator:
+    '''
+    Helper class to iterate through training examples for multiple epochs.
+    '''
+    
+    def __init__(self, x, y):
+        
+        self.x = x
+        self.y = y
+    
+    def __len__(self):
+        return self.x.shape[0]
+    
+    def __iter__(self):
+        
+        for i in range(self.x.shape[0]):
+            yield {'inputs':self.x[i], 'targets':self.y[i]}
+
+
+class CharacterLanguageModelingDataset:
+    '''
+    A class to handle LM datasets for models that deal with character-level
+    representation. Performs the following functions:
+    1. Creates vocabularies for both word and character-level representation from the training
+       dataset.
+    2. Numericalizes the words and characters in the data.
+    3. Creates iterators of the all the dataset files passed.
+    
+    Some important details (might be specific to https://arxiv.org/abs/1508.06615). 
+    --> In order to deal with these datasets at character-level, we first replace all the
+       <unk> tokens with '|' so that it can be represented by a single character. Since it
+       is eventually replaced by a single id, it does not affect the word-vocab too.
+    --> Additionally, we also need special tokens to mark "START OF THE WORD" and 
+        "END OF THE WORD" for each word. These tokens are '{' and '}' respectively. 
+        The paper claims that doing so helps the mdoel in gaining a better understanding of 
+        the prefix and suffix for each word.
+    ---> For <eos> token at the end of each line, we use '+' instead.
+     '''
+    
+    def __init__(self, train_data_path:str, valid_data_path:str, test_data_path:str, tokenizer:Tokenizer):
+        
+        
+        self.tokenizer = tokenizer
+
+        self.train_data = self._load_dataset(train_data_path)
+        self.valid_data = self._load_dataset(valid_data_path)
+        self.test_data = self._load_dataset(test_data_path)
+        self.word_vocab = self._prepare_word_vocab(self.train_data)
+        self.char_vocab = self._prepare_char_vocab(self.train_data)
+        
+        
+    def _load_dataset(self, data_path: str) -> dict:
+        '''
+        Reads dataset from path. Appends each line in a list.
+        Returns a list of strings.
+        '''
+        print("Loading data...")
+        lines = []
+        word_tokens = []
+        char_tokens = []
+        data = {}
+        with open(data_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.replace('<unk>', '|')
+                words = self.tokenizer(line)
+                word_tokens.extend(words)
+                for word in words:
+                    char_tokens.extend([ch for ch in word])
+                lines.append(line)
+        data = {'lines':lines, 'words':word_tokens, 'chars': char_tokens}
+        return data
+    
+    
+    def _prepare_word_vocab(self, data:dict) -> Vocab:
+        '''
+        Create a word vocab for our dataset. Uses our vocab.py script.
+        '''
+       
+        words = data['words']
+        word_counter = Counter(words)
+        word_vocab = Vocab(word_counter, unk_token=None)
+        return word_vocab
+    
+    def _prepare_char_vocab(self, data:dict) -> Vocab:
+        '''
+        Create a char vocab for our dataset. Uses our vocab.py script.
+        '''
+        
+        chars = data['chars']
+        char_counter = Counter(chars)
+        char_vocab = Vocab(char_counter, unk_token=None, special_tokens=['{', '}'])
+        return char_vocab
+    
+    def _to_ids(self, data) -> Tuple[np.ndarray]:
+        '''
+        Converts the chars/words to unique id/number.
+        '''
+        
+        word_ids = []
+        char_ids = []
+        for line in data['lines']:
+            for word in self.tokenizer(line):
+                
+                word_ids.append(self.word_vocab[word])
+                char_array = [self.char_vocab[char] for char in '{' + word + '}']
+                char_ids.append(char_array)
+            
+        
+        self.max_word_len = max([len(char_list) for char_list in char_ids])
+        _word_ids = np.array(word_ids, dtype=np.long)
+        
+        # create an empty array to pad the words that have lesser characters than
+        # max_word_len
+        _char_ids = np.zeros([len(char_ids), self.max_word_len],dtype=np.long)
+        for i, char_id in enumerate(char_ids):
+            _char_ids[i,:len(char_id)] = char_id
+            
+        return _word_ids, _char_ids
+        
+    def _get_iterator(self, data, batch_size, sequence_length) -> DataIterator:
+        
+        word_ids, char_ids = self._to_ids(data)
+        
+        # ensures that inputs and targets are created in a way to maintain the correspondence 
+        # between the character inputs and word targets
+        num_words = len(data['words'])
+        num_complete_words = (num_words // (batch_size * sequence_length)) * (batch_size * sequence_length)
+        char_ids = char_ids[:num_complete_words, :]
+        word_ids = word_ids[:num_complete_words]
+        
+        targets = np.zeros_like(word_ids)
+        
+        # create a new array which shifts the target by one time-step
+        targets[:-1] = word_ids[1:]
+        targets[-1] = word_ids[0]
+        
+        
+        inputs = torch.tensor(char_ids, dtype=torch.long)
+        targets = torch.tensor(targets, dtype=torch.long)
+        
+        inputs = inputs.view(-1, batch_size, sequence_length, self.max_word_len)
+        targets = targets.view(-1, batch_size, sequence_length)
+        
+        iterator = DataIterator(inputs, targets)
+        
+        return iterator
+
+        
+    def load_iterators(self, batch_size, sequence_length) -> Tuple[DataIterator]:
+        
+        print("Loading iterators...")
+        train_iterator = self._get_iterator(self.train_data, batch_size, sequence_length)
+        valid_iterator = self._get_iterator(self.valid_data, batch_size, sequence_length)
+        test_iterator = self._get_iterator(self.test_data, batch_size, sequence_length)
+
+        return train_iterator, valid_iterator, test_iterator
+    
+        
 
 
 if __name__ == "__main__":
