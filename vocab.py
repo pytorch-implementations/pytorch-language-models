@@ -90,7 +90,12 @@ class Vocab:
         return self._itos[index]
 
     def save(self, save_path):
+        """
+        Saves the vocabulary object to the given save_path
+        """
+        
         assert isinstance(save_path, str), f"save_path should be a str, got {type(save_path)}"
+        
         torch.save(self, save_path)
 
     def __getitem__(self, x):
@@ -107,16 +112,18 @@ class Vocab:
             raise ValueError(f'When calling vocab[x], x should be either an int or str, got {type(x)}')
 
 
-def build_vocab_from_iterator(examples, **kwargs):
+def build_vocab_from_iterator(iterator, **kwargs):
 
-    assert isinstance(examples, list), f"examples should be a list, got {type(examples)}"
-    assert all([isinstance(example, list) for example in examples]), f"examples should be a list of lists, got {[type(example) for example in examples]}"
+    assert isinstance(iterator, list), f"iterator should be a list, got {type(examples)}"
+    assert all([isinstance(i, (list, str)) for i in iterator]), "iterator should be a list of lists or strings"
 
     counter = collections.Counter()
 
-    for example in examples:
-        assert all([isinstance(token, str) for token in example]), f"each example in examples should be a list of strings, got {[type(token) for token in example]}"
-        counter.update(example)
+    for i in iterator:
+        if isinstance(i, list):
+            counter.update(i)
+        else:
+            counter[i] += 1
 
     vocab = Vocab(counter, **kwargs)
 
