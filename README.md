@@ -9,3 +9,7 @@ TODO:
   - [] ptb
   - [] wikitext
   - [] enwik8
+
+
+
+Setup for testing dev branch: `python run.py`
