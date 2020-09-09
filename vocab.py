@@ -40,10 +40,10 @@ class Vocab:
 
         stoi = dict()
 
-        if unk_token is not None:
-            stoi[unk_token] = len(stoi)
         if pad_token is not None:
             stoi[pad_token] = len(stoi)
+        if unk_token is not None:
+            stoi[unk_token] = len(stoi)
         if special_tokens is not None:
             for special in special_tokens:
                 stoi[special] = len(stoi)
@@ -110,6 +110,9 @@ class Vocab:
             return self.itos(x)
         else:
             raise ValueError(f'When calling vocab[x], x should be either an int or str, got {type(x)}')
+    
+    def __len__(self):
+        return len(self._stoi)
 
 
 def build_vocab_from_iterator(iterator, **kwargs):

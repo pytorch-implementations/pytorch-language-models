@@ -1,5 +1,11 @@
 # PyTorch Language Models
 
+
+
+Setup for testing dev branch: `python run.py`
+
+
+
 See `main.py` for the currently proposed API.
 
 TODO:
@@ -9,3 +15,6 @@ TODO:
   - [] ptb
   - [] wikitext
   - [] enwik8
+
+
+
