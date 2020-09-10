@@ -26,7 +26,7 @@ class WordLanguageModelingDataset:
         """
         Reads dataset from path. Tokenizes each line and extends a list.
         """
-        print("Loading data...")
+
         assert isinstance(data_path, str), f"data_path should be a str, got {type(data_path)}"
 
         data = []
@@ -58,7 +58,7 @@ class CharacterLanguageModelingDataset(WordLanguageModelingDataset):
         self.train_data = self._load_character_dataset(dataset.train_data)
         self.valid_data = self._load_character_dataset(dataset.valid_data)
         self.test_data = self._load_character_dataset(dataset.test_data)
-        self.vocab = self._create_vocab(dataset.train_data, **vocab_kwargs)
+        self.vocab = self._create_vocab(self.train_data, **vocab_kwargs)
 
     def _load_character_dataset(self, data: List[str]) -> List[List[str]]:
 
@@ -78,5 +78,7 @@ if __name__ == "__main__":
     char_dataset = CharacterLanguageModelingDataset(word_dataset,
                                                     char_tokenizer)
 
-    print(word_dataset[:10])
-    print(char_dataset[:10])
+    print(word_dataset.train_data[:10])
+    print(char_dataset.train_data[:10])
+    print(word_dataset.vocab.counter.most_common(10))
+    print(char_dataset.vocab.counter.most_common(10))
