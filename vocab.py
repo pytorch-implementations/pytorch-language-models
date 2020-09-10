@@ -93,9 +93,9 @@ class Vocab:
         """
         Saves the vocabulary object to the given save_path
         """
-        
+
         assert isinstance(save_path, str), f"save_path should be a str, got {type(save_path)}"
-        
+
         torch.save(self, save_path)
 
     def __getitem__(self, x):
