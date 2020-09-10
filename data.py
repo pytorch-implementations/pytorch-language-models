@@ -1,17 +1,15 @@
-import tokenizer
-import vocab
-import torch
 from typing import List, Tuple, Iterator
 from tokenizer import Tokenizer
+import vocab
 
 
-class LanguageModelingDataset:
+class WordLanguageModelingDataset:
     """
-    Class to handle datasets. Given train/valid/test paths, a tokenizer and vocab arguments it will:
+    Class to word level datasets. Given train/valid/test paths, a tokenizer and vocab arguments it will:
       - tokenize each line of the given data paths and extend to a list
       - create the vocabulary from the tokenized train data
     """
-    def __init__(self, train_data_path, valid_data_path, test_data_path, tokenizer, **vocab_kwargs):
+    def __init__(self, train_data_path: str, valid_data_path: str, test_data_path: str, tokenizer: Tokenizer, **vocab_kwargs):
 
         assert isinstance(train_data_path, str), f"train_data_path should be a str, got {type(train_data_path)}"
         assert isinstance(valid_data_path, str), f"train_data_path should be a str, got {type(valid_data_path)}"
@@ -28,7 +26,7 @@ class LanguageModelingDataset:
         """
         Reads dataset from path. Tokenizes each line and extends a list.
         """
-
+        print("Loading data...")
         assert isinstance(data_path, str), f"data_path should be a str, got {type(data_path)}"
 
         data = []
@@ -52,80 +50,33 @@ class LanguageModelingDataset:
 
         return self.vocab
 
-    def load_iterators(self, batch_size: int, sequence_length: int) -> Tuple[Iterator, Iterator, Iterator]:
-        """
-        Gets the train/valid/test iterators.
-        """
 
-        assert isinstance(batch_size, int), f"batch_size should be an int, got {type(batch_size)}"
-        assert isinstance(sequence_length, int), f"sequence_length should be an int, got {type(sequence_length)}"
-        assert batch_size > 0, f"batch_size should be >0, got {batch_size}"
-        assert sequence_length > 0, f"sequence_length should be >0, got {sequence_length}"
+class CharacterLanguageModelingDataset(WordLanguageModelingDataset):
+    def __init__(self, dataset: WordLanguageModelingDataset, tokenizer: Tokenizer, **vocab_kwargs):
 
-        train_iterator = self._get_iterator(self.train_data, batch_size, sequence_length)
-        valid_iterator = self._get_iterator(self.valid_data, batch_size, sequence_length)
-        test_iterator = self._get_iterator(self.test_data, batch_size, sequence_length)
+        self.tokenizer = tokenizer
+        self.train_data = self._load_character_dataset(dataset.train_data)
+        self.valid_data = self._load_character_dataset(dataset.valid_data)
+        self.test_data = self._load_character_dataset(dataset.test_data)
+        self.vocab = self._create_vocab(dataset.train_data, **vocab_kwargs)
 
-        return train_iterator, valid_iterator, test_iterator
+    def _load_character_dataset(self, data: List[str]) -> List[List[str]]:
 
-    def _get_iterator(self, data: List[str], batch_size: int, sequence_length: int) -> Iterator[Tuple[torch.LongTensor, torch.LongTensor]]:
-        """
-        Given some data (list of tokens), converts to ids and batches then creates a list iterator.
-        Targets are calculated by shifting the input sequence by 1 time-step.
-        """
+        data = [self.tokenizer(datum) for datum in data]
 
-        ids = self._to_ids(data, batch_size)
-        iterator = []
-        for i in range(0, ids.size(1) - sequence_length, sequence_length):
-            inputs = ids[:, i:i+sequence_length]
-            targets = ids[:, (i+1):(i+1)+sequence_length]
-            iterator.append((inputs, targets))
-
-        return iter(iterator)
-
-    def _to_ids(self, data: List[str], batch_size: int) -> torch.LongTensor:
-        """
-        Converts data (the list of tokens) into an ids (integers) tensor using the vocabulary.
-        Then calculates how many batches it can make from the dataset and reshapes [batch_size, *].
-        """
-
-        ids = torch.LongTensor(len(data))
-        for i, token in enumerate(data):
-            ids[i] = self.vocab[token]
-
-        n_batches = ids.size(0) // batch_size
-        ids = ids[:n_batches * batch_size]
-        ids = ids.view(batch_size, -1)
-
-        return ids
+        return data
 
 
 if __name__ == "__main__":
 
-    tokenizer = tokenizer.Tokenizer('split', lower=True, eos_token='<eos>')
-    dataset = LanguageModelingDataset('ptb.train.txt',
-                                      'ptb.valid.txt',
-                                      'ptb.valid.txt',
-                                      tokenizer)
+    word_tokenizer = Tokenizer('split', lower=False)
+    word_dataset = WordLanguageModelingDataset('ptb.train.txt',
+                                               'ptb.valid.txt',
+                                               'ptb.valid.txt',
+                                               word_tokenizer)
+    char_tokenizer = Tokenizer('list', lower=True, sos_token='<sow>', eos_token='<eow>')
+    char_dataset = CharacterLanguageModelingDataset(word_dataset,
+                                                    char_tokenizer)
 
-    batch_size = 10
-    sequence_length = 20
-
-    train_iterator, valid_iterator, test_iterator = dataset.load_iterators(batch_size, sequence_length)
-    batch = next(iter(train_iterator))
-    assert(type(batch)) == tuple
-    assert(len(batch)) == 2
-    input, target = batch
-    # x[0] = input, x[1] = target
-    assert input.shape == torch.Size([batch_size, sequence_length])
-    assert target.shape == torch.Size([batch_size, sequence_length])
-
-    assert torch.all(torch.eq(input[:, 1:], target[:, :-1]))
-
-    # example
-    print("Sample Input:")
-    print("\t", input[0])
-    print("\t", [dataset.vocab[x.item()] for x in input[0]])
-    print("Sample Output:")
-    print("\t", target[0])
-    print("\t", [dataset.vocab[x.item()] for x in target[0]])
+    print(word_dataset[:10])
+    print(char_dataset[:10])

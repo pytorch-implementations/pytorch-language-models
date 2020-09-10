@@ -79,6 +79,10 @@ class Tokenizer:
         return self.tokenize(example)
 
 
+def _list_tokenize(example):
+    return list(example)
+
+
 def _split_tokenize(example):
     return example.split()
 
@@ -94,6 +98,9 @@ def get_tokenizer(tokenizer: str) -> Callable:
     """
 
     assert isinstance(tokenizer, str), f"input to get_tokenizer should be a str, got {type(tokenizer)}"
+
+    if tokenizer == "list":
+        return _list_tokenize
 
     if tokenizer == "split":
         return _split_tokenize
@@ -146,7 +153,7 @@ if __name__ == "__main__":
     assert tokens == expected_tokens
 
     import time
-    for tokenizer_fn in ["split", "spacy", "punkt", "tweet", "ptb", "nltk"]:
+    for tokenizer_fn in ["list", "split", "spacy", "punkt", "tweet", "ptb", "nltk"]:
         print(tokenizer_fn)
         tokenizer = Tokenizer(tokenizer_fn)
         t0 = time.monotonic()
